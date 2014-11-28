@@ -1,3 +1,18 @@
+/*
+ * Copyright 2014 xinjunli (micromagic@sina.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package tool;
 
@@ -17,19 +32,21 @@ import java.util.Map;
 public class PrivateAccessor
 {
 	/**
-	 * 构造一个指定类型的null值. <p>
+	 * 对一个值进行强制类型转换. <p>
 	 * 如下面两个方法: <p>
 	 * void test(String str)<p>
 	 * void test(Object obj)<p>
 	 * 如果你直接使用test(null)来调用编译时就会出错, 这时候需要通过强制
 	 * 类型转换指定一个类型, 如: test((String) null).
-	 * 这个方法就相当于对一个null值进行强制类型转换.
+	 * 这个方法就相当于对一个值进行强制类型转换.
+	 * 使用样例: <p>
+	 * invoke(obj, "methodName", cast(String.class, null));
 	 *
 	 * @param type  null值的类型
 	 */
-	public static Object nullValue(Class type)
+	public static Object cast(Class type, Object value)
 	{
-		return new NullValue(type);
+		return new CastValue(type, value);
 	}
 
 	/**
@@ -65,9 +82,14 @@ public class PrivateAccessor
 		if (!constructor.isAccessible())
 		{
 			constructor.setAccessible(true);
-			Object obj = constructor.newInstance(params);
-			constructor.setAccessible(false);
-			return obj;
+			try
+			{
+				return constructor.newInstance(changeParams(params));
+			}
+			finally
+			{
+				constructor.setAccessible(false);
+			}
 		}
 		return constructor.newInstance(params);
 	}
@@ -123,20 +145,46 @@ public class PrivateAccessor
 		if (!m.isAccessible())
 		{
 			m.setAccessible(true);
-			Object r = null;
 			try
 			{
-				r = m.invoke(obj, params);
+				return m.invoke(obj, changeParams(params));
 			}
 			catch (InvocationTargetException ex)
 			{
 				Throwable cause = ex.getCause();
 				throw cause instanceof Exception ? (Exception) cause : ex;
 			}
-			m.setAccessible(false);
-			return r;
+			finally
+			{
+				m.setAccessible(false);
+			}
 		}
 		return m.invoke(obj, params);
+	}
+
+	/**
+	 * 对参数中CastValue类型的值进行转换.
+	 */
+	private static Object[] changeParams(Object[] params)
+	{
+		if (params == null || params.length == 0)
+		{
+			return params;
+		}
+		Object[] args = params;
+		for (int i = 0; i < params.length; i++)
+		{
+			if (params[i] instanceof CastValue)
+			{
+				if (args == params)
+				{
+					args = new Object[params.length];
+					System.arraycopy(params, 0, args, 0, params.length);
+				}
+				args[i] = ((CastValue) params[i]).originValue;
+			}
+		}
+		return args;
 	}
 
 	/**
@@ -203,9 +251,9 @@ public class PrivateAccessor
 			if (objs[i] != null)
 			{
 				Class t = objs[i].getClass() ;
-				if (t == NullValue.class)
+				if (t == CastValue.class)
 				{
-					t = ((NullValue) objs[i]).type;
+					t = ((CastValue) objs[i]).type;
 				}
 				if (t != types[i])
 				{
@@ -246,6 +294,10 @@ public class PrivateAccessor
 	}
 
 	/**
+	 * 当父类为Object时需要降低的匹配度等级.
+	 */
+	private static final int ML = 5;
+	/**
 	 * 获取继承关系的层级.
 	 */
 	private static int getInheritLevel(Class c, Class type, int nowLevel)
@@ -254,12 +306,18 @@ public class PrivateAccessor
 		int minLevel;
 		if (p == type)
 		{
-			// 如果父类是Object匹配度将5级
-			minLevel = type == Object.class ? nowLevel + 5 : nowLevel;
+			if (type == Object.class)
+			{
+				minLevel = nowLevel + ML;
+			}
+			else
+			{
+				return nowLevel;
+			}
 		}
 		else
 		{
-			minLevel = Integer.MAX_VALUE >> 1;
+			minLevel = Integer.MAX_VALUE;
 			if (p != null)
 			{
 				minLevel = getInheritLevel(p, type, nowLevel + 1);
@@ -327,9 +385,14 @@ public class PrivateAccessor
 		if (!f.isAccessible())
 		{
 			f.setAccessible(true);
-			Object r = f.get(obj);
-			f.setAccessible(false);
-			return r;
+			try
+			{
+				return f.get(obj);
+			}
+			finally
+			{
+				f.setAccessible(false);
+			}
 		}
 		return f.get(obj);
 	}
@@ -378,8 +441,14 @@ public class PrivateAccessor
 		if (!f.isAccessible())
 		{
 			f.setAccessible(true);
-			f.set(obj, value);
-			f.setAccessible(false);
+			try
+			{
+				f.set(obj, value);
+			}
+			finally
+			{
+				f.setAccessible(false);
+			}
 		}
 		else
 		{
@@ -427,30 +496,32 @@ public class PrivateAccessor
 		wrapperIndex.put(Double.class, new Class[]{double.class});
 	}
 
-	static final class NullValue
+	private static final class CastValue
 	{
 		private Class type;
-		public NullValue(Class type)
+		private Object originValue;
+		public CastValue(Class type, Object value)
 		{
 			if (type == null)
 			{
 				throw new NullPointerException("type is null.");
 			}
 			this.type = type;
+			this.originValue = value;
 		}
 
 	}
 
-	static class MethodContainer
-	{
-		Method method;
-		int match;
-		public MethodContainer(Method method, int match)
-		{
-			this.match = match;
-			this.method = method;
-		}
+}
 
+class MethodContainer
+{
+	Method method;
+	int match;
+	public MethodContainer(Method method, int match)
+	{
+		this.match = match;
+		this.method = method;
 	}
 
 }

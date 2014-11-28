@@ -1,3 +1,18 @@
+/*
+ * Copyright 2014 xinjunli (micromagic@sina.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package tool;
 
@@ -9,7 +24,6 @@ import java.util.List;
 import junit.framework.TestCase;
 
 import static tool.PrivateAccessor.*;
-import tool.PrivateAccessor.MethodContainer;
 
 public class PrivateAccessorTest extends TestCase
 {
@@ -146,14 +160,14 @@ public class PrivateAccessorTest extends TestCase
 		assertEquals(0, ((MethodContainer) obj).match);
 
 		// (String) null => void test1(String str)
-		params = new Object[]{nullValue(String.class)};
+		params = new Object[]{cast(String.class, null)};
 		obj = invoke(PrivateAccessor.class, "getMethod",
 				B.class, "test1", false, params);
 		assertEquals(0, ((MethodContainer) obj).match);
 		assertEquals(String.class, ((MethodContainer) obj).method.getParameterTypes()[0]);
 
 		// (Object) null => void test1(Object obj)
-		params = new Object[]{nullValue(Object.class)};
+		params = new Object[]{cast(Object.class, null)};
 		obj = invoke(PrivateAccessor.class, "getMethod",
 				B.class, "test1", false, params);
 		assertEquals(0, ((MethodContainer) obj).match);
@@ -198,69 +212,71 @@ public class PrivateAccessorTest extends TestCase
 		assertEquals(a.getI1(), 111);
 		a = (A) create(A.class, null, new C());
 		assertEquals(a.getI1(), 222);
+		a = (A) create(A.class, cast(String.class, null), new C());
+		assertEquals(a.getI1(), 111);
 	}
 
 
 	void test1(short a, int[] b) {}
 
-	@SuppressWarnings("rawtypes")
-	static class A
+}
+
+@SuppressWarnings("rawtypes")
+class A
+{
+	public A() {}
+	public A(String a, Collection b)
 	{
-		public A() {}
-		public A(String a, Collection b)
-		{
-			this.i = 111;
-		}
-		public A(Object a, AbstractList b)
-		{
-			this.i = 222;
-		}
-		
-		private int i = 1;
-		public int getI1()
-		{
-			return this.i;
-		}
-		@SuppressWarnings("unused")
-		private void setI(int i)
-		{
-			this.i = i;
-		}
-
-		void test1(Comparable obj) {}
-		void test1(Iterable obj) {}
-		void test1(Collection obj) {}
-
-		void test1(byte a, short b) {}
-
+		this.i = 111;
+	}
+	public A(Object a, AbstractList b)
+	{
+		this.i = 222;
+	}
+	
+	private int i = 1;
+	public int getI1()
+	{
+		return this.i;
+	}
+	@SuppressWarnings("unused")
+	private void setI(int i)
+	{
+		this.i = i;
 	}
 
-	static class B extends A
+	void test1(Comparable obj) {}
+	void test1(Iterable obj) {}
+	void test1(Collection obj) {}
+
+	void test1(byte a, short b) {}
+
+}
+
+class B extends A
+{
+	private int i = 2;
+	public int getI2()
 	{
-		private int i = 2;
-		public int getI2()
-		{
-			return this.i;
-		}
-		@SuppressWarnings("unused")
-		private void setI(int i)
-		{
-			this.i = i;
-		}
-
-		void test1(String str, int b) {}
-		void test1(String str) {}
-		void test1(Object obj) {}
-
-		void test1(byte a, int b) {}
-
+		return this.i;
+	}
+	@SuppressWarnings("unused")
+	private void setI(int i)
+	{
+		this.i = i;
 	}
 
-	static class C extends ArrayList<Object>
-			implements List<Object>
-	{
-		private static final long serialVersionUID = 1L;
+	void test1(String str, int b) {}
+	void test1(String str) {}
+	void test1(Object obj) {}
 
-	}
+	void test1(byte a, int b) {}
+
+}
+
+class C extends ArrayList<Object>
+		implements List<Object>
+{
+	private static final long serialVersionUID = 1L;
 
 }
