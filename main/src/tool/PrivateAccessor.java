@@ -58,6 +58,10 @@ public class PrivateAccessor
 	public static Object create(Class c, Object... params)
 			throws Exception
 	{
+		if (c == null)
+		{
+			throw new IllegalArgumentException("Param c is null!");
+		}
 		Constructor[] cArr = c.getDeclaredConstructors();
 		int paramCount = params == null ? 0 : params.length;
 		Constructor constructor = null;
@@ -77,7 +81,7 @@ public class PrivateAccessor
 		}
 		if (constructor == null)
 		{
-			throw new NoSuchMethodException("Constructor:" + c.getName());
+			throw new NoSuchMethodException(c.getName() + ".<init>()");
 		}
 		if (!constructor.isAccessible())
 		{
@@ -124,6 +128,14 @@ public class PrivateAccessor
 			String method, Object... params)
 			throws Exception
 	{
+		if (obj == null)
+		{
+			throw new IllegalArgumentException("Param obj is null!");
+		}
+		if (method == null)
+		{
+			throw new IllegalArgumentException("Param method is null!");
+		}
 		Class c;
 		if ((c = type) == null)
 		{
@@ -139,7 +151,7 @@ public class PrivateAccessor
 		MethodContainer mc = getMethod(c, method, obj instanceof Class, params);
 		if (mc == null)
 		{
-			throw new NoSuchMethodException(method);
+			throw new NoSuchMethodException(c.getName() + "." + method + "()");
 		}
 		Method m = mc.method;
 		if (!m.isAccessible())
@@ -162,6 +174,7 @@ public class PrivateAccessor
 		return m.invoke(obj, params);
 	}
 
+	private static final Object[] EMPTY_ARR = new Object[0];
 	/**
 	 * 对参数中CastValue类型的值进行转换.
 	 */
@@ -169,7 +182,7 @@ public class PrivateAccessor
 	{
 		if (params == null || params.length == 0)
 		{
-			return params;
+			return EMPTY_ARR;
 		}
 		Object[] args = params;
 		for (int i = 0; i < params.length; i++)
@@ -266,6 +279,11 @@ public class PrivateAccessor
 					if (types[i].isPrimitive())
 					{
 						Class[] tArr = (Class[]) wrapperIndex.get(t);
+						if (tArr == null)
+						{
+							// 不是外覆类, 无法和私有类型匹配
+							return -1;
+						}
 						for (int j = 0; j < tArr.length; j++)
 						{
 							if (tArr[j] == types[i])
@@ -369,6 +387,14 @@ public class PrivateAccessor
 	public static Object get(Object obj, Class type, String field)
 			throws Exception
 	{
+		if (obj == null)
+		{
+			throw new IllegalArgumentException("Param obj is null!");
+		}
+		if (field == null)
+		{
+			throw new IllegalArgumentException("Param field is null!");
+		}
 		Class c;
 		if ((c = type) == null)
 		{
@@ -425,6 +451,14 @@ public class PrivateAccessor
 			Object value)
 			throws Exception
 	{
+		if (obj == null)
+		{
+			throw new IllegalArgumentException("Param obj is null!");
+		}
+		if (field == null)
+		{
+			throw new IllegalArgumentException("Param field is null!");
+		}
 		Class c;
 		if ((c = type) == null)
 		{

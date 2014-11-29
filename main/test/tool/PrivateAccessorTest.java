@@ -203,6 +203,16 @@ public class PrivateAccessorTest extends TestCase
 		invoke(obj, A.class, "setI", Integer.valueOf(100));
 		assertEquals(10, obj.getI2());
 		assertEquals(100, obj.getI1());
+
+		try
+		{
+			invoke(obj, "test1", "", Byte.valueOf((byte) 15));
+			assertEquals(15, obj.getI2());
+		}
+		catch (Exception ex)
+		{
+			fail();
+		}
 	}
 
 	public void testCreate()
@@ -266,7 +276,11 @@ class B extends A
 		this.i = i;
 	}
 
-	void test1(String str, int b) {}
+	void test1(String str, int b)
+	{
+		this.i = b;
+	}
+
 	void test1(String str) {}
 	void test1(Object obj) {}
 
