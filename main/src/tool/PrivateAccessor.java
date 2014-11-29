@@ -90,6 +90,22 @@ public class PrivateAccessor
 			{
 				return constructor.newInstance(changeParams(params));
 			}
+			catch (InvocationTargetException ex)
+			{
+				Throwable target = ex.getTargetException();
+				if (target instanceof Exception)
+				{
+					throw (Exception) target;
+				}
+				else if (target instanceof Error)
+				{
+					throw (Error) target;
+				}
+				else
+				{
+					throw ex;
+				}
+			}
 			finally
 			{
 				constructor.setAccessible(false);
@@ -163,8 +179,19 @@ public class PrivateAccessor
 			}
 			catch (InvocationTargetException ex)
 			{
-				Throwable cause = ex.getCause();
-				throw cause instanceof Exception ? (Exception) cause : ex;
+				Throwable target = ex.getTargetException();
+				if (target instanceof Exception)
+				{
+					throw (Exception) target;
+				}
+				else if (target instanceof Error)
+				{
+					throw (Error) target;
+				}
+				else
+				{
+					throw ex;
+				}
 			}
 			finally
 			{
@@ -501,8 +528,8 @@ public class PrivateAccessor
 			Field f = c.getDeclaredField(field);
 			if (needStatic && !Modifier.isStatic(f.getModifiers()))
 			{
-				throw new NoSuchFieldException("Field " + f.getName() 
-						+ " is't static.");
+				throw new NoSuchFieldException("Field " + c.getName() + "." 
+						+ f.getName() + " is't static.");
 			}
 			return f;
 		}
