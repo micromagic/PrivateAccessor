@@ -83,35 +83,29 @@ public class PrivateAccessor
 		{
 			throw new NoSuchMethodException(c.getName() + ".<init>()");
 		}
-		if (!constructor.isAccessible())
+		// 由于类的成员对象都是复制后返回的, 所以这里修改了Accessible属性
+		// 不会对其它地方产生影响(后面的Filed、Method也同样如此)
+		constructor.setAccessible(true);
+		try
 		{
-			constructor.setAccessible(true);
-			try
+			return constructor.newInstance(changeParams(params));
+		}
+		catch (InvocationTargetException ex)
+		{
+			Throwable target = ex.getTargetException();
+			if (target instanceof Exception)
 			{
-				return constructor.newInstance(changeParams(params));
+				throw (Exception) target;
 			}
-			catch (InvocationTargetException ex)
+			else if (target instanceof Error)
 			{
-				Throwable target = ex.getTargetException();
-				if (target instanceof Exception)
-				{
-					throw (Exception) target;
-				}
-				else if (target instanceof Error)
-				{
-					throw (Error) target;
-				}
-				else
-				{
-					throw ex;
-				}
+				throw (Error) target;
 			}
-			finally
+			else
 			{
-				constructor.setAccessible(false);
+				throw ex;
 			}
 		}
-		return constructor.newInstance(params);
 	}
 
 	/**
@@ -170,35 +164,27 @@ public class PrivateAccessor
 			throw new NoSuchMethodException(c.getName() + "." + method + "()");
 		}
 		Method m = mc.method;
-		if (!m.isAccessible())
+		m.setAccessible(true);
+		try
 		{
-			m.setAccessible(true);
-			try
+			return m.invoke(obj, changeParams(params));
+		}
+		catch (InvocationTargetException ex)
+		{
+			Throwable target = ex.getTargetException();
+			if (target instanceof Exception)
 			{
-				return m.invoke(obj, changeParams(params));
+				throw (Exception) target;
 			}
-			catch (InvocationTargetException ex)
+			else if (target instanceof Error)
 			{
-				Throwable target = ex.getTargetException();
-				if (target instanceof Exception)
-				{
-					throw (Exception) target;
-				}
-				else if (target instanceof Error)
-				{
-					throw (Error) target;
-				}
-				else
-				{
-					throw ex;
-				}
+				throw (Error) target;
 			}
-			finally
+			else
 			{
-				m.setAccessible(false);
+				throw ex;
 			}
 		}
-		return m.invoke(obj, params);
 	}
 
 	private static final Object[] EMPTY_ARR = new Object[0];
@@ -308,7 +294,7 @@ public class PrivateAccessor
 						Class[] tArr = (Class[]) wrapperIndex.get(t);
 						if (tArr == null)
 						{
-							// 不是外覆类, 无法和私有类型匹配
+							// 不是外覆类, 无法和基本类型匹配
 							return -1;
 						}
 						for (int j = 0; j < tArr.length; j++)
@@ -435,18 +421,7 @@ public class PrivateAccessor
 			}
 		}
 		Field f = getField(c, field, obj instanceof Class);
-		if (!f.isAccessible())
-		{
-			f.setAccessible(true);
-			try
-			{
-				return f.get(obj);
-			}
-			finally
-			{
-				f.setAccessible(false);
-			}
-		}
+		f.setAccessible(true);
 		return f.get(obj);
 	}
 
@@ -499,22 +474,8 @@ public class PrivateAccessor
 			}
 		}
 		Field f = getField(c, field, obj instanceof Class);
-		if (!f.isAccessible())
-		{
-			f.setAccessible(true);
-			try
-			{
-				f.set(obj, value);
-			}
-			finally
-			{
-				f.setAccessible(false);
-			}
-		}
-		else
-		{
-			f.set(obj, value);
-		}
+		f.setAccessible(true);
+		f.set(obj, value);
 	}
 
 	/**
@@ -544,17 +505,26 @@ public class PrivateAccessor
 		}
 	}
 
-	// 外覆类的索引表
+	// 外覆类与基本类型互转的索引表
 	private static Map wrapperIndex = new HashMap();
 	static
 	{
 		wrapperIndex.put(Boolean.class, new Class[]{boolean.class});
-		wrapperIndex.put(Character.class, new Class[]{char.class, int.class, long.class});
-		wrapperIndex.put(Byte.class, new Class[]{byte.class, short.class, int.class, long.class});
-		wrapperIndex.put(Short.class, new Class[]{short.class, int.class, long.class});
-		wrapperIndex.put(Integer.class, new Class[]{int.class, long.class});
+		wrapperIndex.put(boolean.class, Boolean.class);
+		wrapperIndex.put(Character.class, new Class[]{char.class, int.class, long.class, double.class, float.class});
+		wrapperIndex.put(char.class, Character.class);
+		wrapperIndex.put(Byte.class, new Class[]{byte.class, short.class, int.class, long.class, double.class, float.class});
+		wrapperIndex.put(byte.class, Byte.class);
+		wrapperIndex.put(Short.class, new Class[]{short.class, int.class, long.class, double.class, float.class});
+		wrapperIndex.put(short.class, Short.class);
+		wrapperIndex.put(Integer.class, new Class[]{int.class, long.class, double.class, float.class});
+		wrapperIndex.put(int.class, Integer.class);
+		wrapperIndex.put(Long.class, new Class[]{long.class, double.class, float.class});
+		wrapperIndex.put(long.class, Long.class);
 		wrapperIndex.put(Float.class, new Class[]{float.class, double.class});
+		wrapperIndex.put(float.class, Float.class);
 		wrapperIndex.put(Double.class, new Class[]{double.class});
+		wrapperIndex.put(double.class, Double.class);
 	}
 
 	private static final class CastValue
@@ -567,7 +537,43 @@ public class PrivateAccessor
 			{
 				throw new NullPointerException("type is null.");
 			}
-			this.type = type;
+			boolean pType = type.isPrimitive();
+			this.type = pType ? (Class) wrapperIndex.get(type) : type;
+			if (value != null && !this.type.isInstance(value))
+			{
+				boolean mismatch = true;
+				if (pType && type != boolean.class 
+						&& (value instanceof Number || value instanceof Character))
+				{
+					if (type == char.class)
+					{
+						// 如果type为char那value一定是Number类型
+						value = new Character((char) ((Number) value).intValue());
+						mismatch = false;
+					}
+					else
+					{
+						// 如果type不是char那一定是要转成Number中的某个类型
+						if (value instanceof Character)
+						{
+							value = new Integer(((Character) value).charValue());
+						}
+						try
+						{
+							Method m = Number.class.getMethod(
+									type.getName() + "Value", new Class[0]);
+							value = m.invoke(value, EMPTY_ARR);
+							mismatch = false;
+						}
+						catch (Exception ex) {}
+					}
+				}
+				if (mismatch)
+				{
+					throw new IllegalArgumentException(value.getClass().getName()
+							+ " can't cast to " + type.getName() + ".");
+				}
+			}
 			this.originValue = value;
 		}
 

@@ -16,6 +16,7 @@
 
 package tool;
 
+import java.lang.reflect.Field;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,6 +28,17 @@ import static tool.PrivateAccessor.*;
 
 public class PrivateAccessorTest extends TestCase
 {
+	public void testMemberDifferent()
+			throws Exception
+	{
+		Field f1 = PrivateAccessor.class.getDeclaredField("ML");
+		boolean old = f1.isAccessible();
+		f1.setAccessible(!old);
+		Field f2 = PrivateAccessor.class.getDeclaredField("ML");
+		assertFalse(f1 == f2);
+		assertFalse(f1.isAccessible() == f2.isAccessible());
+	}
+
 	public void testGet()
 			throws Exception
 	{
@@ -204,15 +216,12 @@ public class PrivateAccessorTest extends TestCase
 		assertEquals(10, obj.getI2());
 		assertEquals(100, obj.getI1());
 
-		try
-		{
-			invoke(obj, "test1", "", Byte.valueOf((byte) 15));
-			assertEquals(15, obj.getI2());
-		}
-		catch (Exception ex)
-		{
-			fail();
-		}
+		invoke(obj, "test1", "", Byte.valueOf((byte) 15));
+		assertEquals(15, obj.getI2());
+		invoke(obj, "test1", "", cast(int.class, Long.valueOf(16L)));
+		assertEquals(16, obj.getI2());
+		invoke(obj, "test1", new C(), cast(char.class, Long.valueOf(17L)));
+		assertEquals(17, obj.getI1());
 	}
 
 	public void testCreate()
@@ -260,6 +269,11 @@ class A
 	void test1(Collection obj) {}
 
 	void test1(byte a, short b) {}
+
+	void test1(Iterable obj, char b)
+	{
+		this.i = b;
+	}
 
 }
 
