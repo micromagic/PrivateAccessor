@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="build">
+	<property name="target" value="1.5" />
+	<property name="source" value="1.5" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<target depends="javadoc,build.src" name="build" />
+	<target name="clean.classes">
+		<delete dir="classes/java" />
+		<mkdir dir="classes/java" />
+	</target><target depends="clean.classes" name="build.src">
+		<javac debug="true" debuglevel="${debuglevel}" encoding="UTF-8" destdir="classes/java" source="${source}" target="${target}" includeantruntime="on">
+			<src path="main/src" />
+		</javac>
+	</target>
+	<target name="javadoc">
+		<javadoc access="public" encoding="UTF-8" docencoding="UTF-8" charset="UTF-8"
+				author="true" destdir="main/doc" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false"
+				windowtitle="PrivateAccessor" source="${source}" sourcepath="main/src" splitindex="true" use="true" version="true" />
+	</target>
+</project>
