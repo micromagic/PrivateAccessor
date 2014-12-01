@@ -42,7 +42,8 @@ public class PrivateAccessor
 	 * 使用样例: <p>
 	 * invoke(obj, "methodName", cast(String.class, null));
 	 *
-	 * @param type  null值的类型
+	 * @param type   需要转换成的类型
+	 * @param value  需要进行类型转换的值
 	 */
 	public static Object cast(Class type, Object value)
 	{
